@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Symbol Processor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: auto;
+        }
+        h2 {
+            color: #333;
+        }
+        input, button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-top: 10px;
+            font-size: 16px;
+            padding: 10px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Upload CSV Files</h2>
+        <input type="file" id="csvFileInput" accept=".csv" multiple>
+        <button onclick="processCSV()">Process</button>
+        
+        <h3>Formatted Symbols:</h3>
+        <textarea id="output" readonly></textarea>
+        <br>
+        <button onclick="copyToClipboard()">Copy to Clipboard</button>
+    </div>
+    
+    <script>
+        function processCSV() {
+            const fileInput = document.getElementById('csvFileInput');
+            const outputField = document.getElementById('output');
+            let formattedSymbols = new Set();
+            
+            if (!fileInput.files.length) {
+                alert("Please select one or more CSV files");
+                return;
+            }
+            
+            let filesProcessed = 0;
+            Array.from(fileInput.files).forEach(file => {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    const rows = text.split(/\r?\n/);
+                    
+                    if (rows.length < 2) {
+                        alert("Invalid or empty CSV file: " + file.name);
+                        filesProcessed++;
+                        return;
+                    }
+                    
+                    const header = rows[0].split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(h => h.trim().toLowerCase());
+                    const symbolIndex = header.findIndex(h => h.includes("symbol"));
+                    
+                    if (symbolIndex === -1) {
+                        alert("No 'Symbol' column found in file: " + file.name);
+                        filesProcessed++;
+                        return;
+                    }
+                    
+                    for (let i = 1; i < rows.length; i++) {
+                        let cols = rows[i].split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+                        if (cols.length > symbolIndex) {
+                            let symbol = cols[symbolIndex].trim().replace(/^"|"$/g, '');
+                            if (symbol) {
+                                formattedSymbols.add("NSE:" + symbol);
+                            }
+                        }
+                    }
+                    
+                    filesProcessed++;
+                    if (filesProcessed === fileInput.files.length) {
+                        outputField.value = Array.from(formattedSymbols).join(",");
+                    }
+                };
+                
+                reader.readAsText(file);
+            });
+        }
+        
+        function copyToClipboard() {
+            const outputField = document.getElementById('output');
+            outputField.select();
+            outputField.setSelectionRange(0, outputField.value.length); // Ensure full selection
+            
+            try {
+                document.execCommand("copy");
+                alert("Copied to clipboard!");
+            } catch (err) {
+                console.error("Failed to copy text: ", err);
+                alert("Copy failed. Please select and copy manually.");
+            }
+        }
+    </script>
+</body>
+</html>
